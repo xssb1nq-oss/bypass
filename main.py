@@ -3,7 +3,7 @@ import httpx
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 
-BOT_TOKEN = "YOUR_TOKEN"
+BOT_TOKEN = "8923013996:AAGJXjHBIXnPeuMqL7iPUKCLXkrTUUWDwlc"
 
 # Приоритет: сначала bypass.vip, fallback на bypass.city
 BYPASS_APIS = [
