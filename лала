@@ -1,8 +1,6 @@
 --// ============================================================
---// NEVERLOSE MOBILE | PROJECT DELTA CORE | v2 TOP BUILD
---// Target: iPhone 11 Pro | touch-first
---// NEW: dual on-screen aim (NPC / PVP), hold + tap-lock,
---//      sticky target, tracers, FOV circle
+--// CSS.JAVA | PROJECT DELTA CORE | v3 DESIGN BUILD
+--// Touch-first | Animated UI | Particles | Multi-accent
 --// ============================================================
 
 if not game:IsLoaded() then
@@ -12,6 +10,7 @@ end
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
 local CollectionService = game:GetService("CollectionService")
 local TeleportService = game:GetService("TeleportService")
@@ -28,7 +27,40 @@ repeat task.wait() until workspace.CurrentCamera ~= nil
 -- CONFIG
 -- ============================================================
 
-local ACCENT = Color3.fromRGB(0, 170, 255)
+-- ── Accent presets ────────────────────────────────────────────────────────────
+local ACCENT_PRESETS = {
+    { Name = "Cyan",    Color = Color3.fromRGB(0,   170, 255) },
+    { Name = "Purple",  Color = Color3.fromRGB(150,  80, 255) },
+    { Name = "Green",   Color = Color3.fromRGB(0,   220, 120) },
+    { Name = "Orange",  Color = Color3.fromRGB(255, 140,  40) },
+    { Name = "Red",     Color = Color3.fromRGB(255,  60,  60) },
+    { Name = "Pink",    Color = Color3.fromRGB(255,  80, 180) },
+    { Name = "Gold",    Color = Color3.fromRGB(255, 200,  40) },
+    { Name = "White",   Color = Color3.fromRGB(230, 235, 240) },
+}
+local ACCENT = ACCENT_PRESETS[1].Color
+
+-- зарегистрированные объекты для live-смены акцента
+local AccentTargets = {}  -- { Object, Property }
+local function TrackAccent(obj, prop)
+    table.insert(AccentTargets, { obj, prop })
+    obj[prop] = ACCENT
+end
+local function SetAccent(c3)
+    ACCENT = c3
+    for _, t in ipairs(AccentTargets) do
+        pcall(function() t[1][t[2]] = c3 end)
+    end
+end
+
+-- ── Визуальные настройки (частицы, анимации) ─────────────────────────────────
+local VFX = {
+    Particle      = "snow",   -- "snow" | "rain" | "stars" | "sparks" | "none"
+    ParticleCount = 40,
+    Animations    = true,     -- глобальный флаг плавных переходов
+    OpenAnim      = true,     -- анимация открытия меню
+    TabAnim       = true,     -- fade при смене вкладки
+}
 
 local C = {
     Main     = Color3.fromRGB(8, 14, 23),
@@ -205,6 +237,18 @@ local function Stroke(parent, color, thickness)
     return s
 end
 
+local function Tween(obj, props, t, style, dir)
+    if not VFX.Animations then
+        for k, v in pairs(props) do pcall(function() obj[k] = v end) end
+        return
+    end
+    TweenService:Create(
+        obj,
+        TweenInfo.new(t or 0.2, style or Enum.EasingStyle.Quart, dir or Enum.EasingDirection.Out),
+        props
+    ):Play()
+end
+
 local function NewLabel(parent, text, size, font)
     local label = Instance.new("TextLabel")
     label.BackgroundTransparency = 1
@@ -222,7 +266,7 @@ end
 
 local function WipeOldGui(container)
     for _, obj in ipairs(container:GetChildren()) do
-        if obj.Name == "NeverloseUI" then
+        if obj.Name == "NeverloseUI" or obj.Name == "CSSJavaUI" then
             obj:Destroy()
         end
     end
@@ -239,12 +283,197 @@ end
 -- ============================================================
 
 local Gui = Instance.new("ScreenGui")
-Gui.Name = "NeverloseUI"
+Gui.Name = "CSSJavaUI"
 Gui.ResetOnSpawn = false
 Gui.IgnoreGuiInset = true
 Gui.DisplayOrder = 100000
 Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 SecureParent(Gui)
+
+-- ── Экран загрузки ────────────────────────────────────────────────────────────
+local LoadScreen = Instance.new("Frame")
+LoadScreen.Name = "LoadScreen"
+LoadScreen.Size = UDim2.fromScale(1, 1)
+LoadScreen.BackgroundColor3 = Color3.fromRGB(4, 7, 12)
+LoadScreen.ZIndex = 200
+LoadScreen.Parent = Gui
+
+local LoadTitle = Instance.new("TextLabel")
+LoadTitle.Size = UDim2.new(1, 0, 0, 40)
+LoadTitle.AnchorPoint = Vector2.new(0.5, 0.5)
+LoadTitle.Position = UDim2.new(0.5, 0, 0.42, 0)
+LoadTitle.BackgroundTransparency = 1
+LoadTitle.Text = "CSS.JAVA"
+LoadTitle.Font = Enum.Font.GothamBlack
+LoadTitle.TextSize = 32
+LoadTitle.TextColor3 = ACCENT
+LoadTitle.ZIndex = 201
+LoadTitle.Parent = LoadScreen
+
+local LoadSub = Instance.new("TextLabel")
+LoadSub.Size = UDim2.new(1, 0, 0, 20)
+LoadSub.AnchorPoint = Vector2.new(0.5, 0.5)
+LoadSub.Position = UDim2.new(0.5, 0, 0.50, 0)
+LoadSub.BackgroundTransparency = 1
+LoadSub.Text = "PROJECT DELTA CORE"
+LoadSub.Font = Enum.Font.GothamMedium
+LoadSub.TextSize = 13
+LoadSub.TextColor3 = Color3.fromRGB(100, 120, 145)
+LoadSub.ZIndex = 201
+LoadSub.Parent = LoadScreen
+
+-- прогресс-бар
+local BarBG = Instance.new("Frame")
+BarBG.Size = UDim2.fromOffset(200, 3)
+BarBG.AnchorPoint = Vector2.new(0.5, 0.5)
+BarBG.Position = UDim2.new(0.5, 0, 0.57, 0)
+BarBG.BackgroundColor3 = Color3.fromRGB(20, 28, 40)
+BarBG.BorderSizePixel = 0
+BarBG.ZIndex = 201
+BarBG.Parent = LoadScreen
+Corner(BarBG, 2)
+
+local BarFill = Instance.new("Frame")
+BarFill.Size = UDim2.new(0, 0, 1, 0)
+BarFill.BackgroundColor3 = ACCENT
+BarFill.BorderSizePixel = 0
+BarFill.ZIndex = 202
+BarFill.Parent = BarBG
+Corner(BarFill, 2)
+
+local LoadStatus = Instance.new("TextLabel")
+LoadStatus.Size = UDim2.new(1, 0, 0, 16)
+LoadStatus.AnchorPoint = Vector2.new(0.5, 0.5)
+LoadStatus.Position = UDim2.new(0.5, 0, 0.62, 0)
+LoadStatus.BackgroundTransparency = 1
+LoadStatus.Text = "Initializing..."
+LoadStatus.Font = Enum.Font.Gotham
+LoadStatus.TextSize = 11
+LoadStatus.TextColor3 = Color3.fromRGB(80, 100, 125)
+LoadStatus.ZIndex = 201
+LoadStatus.Parent = LoadScreen
+
+-- анимируем загрузку: фейк-прогресс
+task.spawn(function()
+    local steps = {
+        { 0.15, "Loading modules..." },
+        { 0.35, "Initializing ESP..." },
+        { 0.55, "Setting up aimbot..." },
+        { 0.75, "Applying visual config..." },
+        { 0.92, "Building UI..." },
+        { 1.00, "Done." },
+    }
+    for _, step in ipairs(steps) do
+        task.wait(0.28)
+        TweenService:Create(BarFill, TweenInfo.new(0.25, Enum.EasingStyle.Quart), {
+            Size = UDim2.new(step[1], 0, 1, 0)
+        }):Play()
+        LoadStatus.Text = step[2]
+    end
+    task.wait(0.3)
+    -- fade out
+    TweenService:Create(LoadScreen, TweenInfo.new(0.4, Enum.EasingStyle.Quart), {
+        BackgroundTransparency = 1
+    }):Play()
+    TweenService:Create(LoadTitle,  TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+    TweenService:Create(LoadSub,    TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+    TweenService:Create(LoadStatus, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+    TweenService:Create(BarBG,      TweenInfo.new(0.4), { BackgroundTransparency = 1 }):Play()
+    TweenService:Create(BarFill,    TweenInfo.new(0.4), { BackgroundTransparency = 1 }):Play()
+    task.wait(0.45)
+    LoadScreen:Destroy()
+end)
+
+-- ── Система частиц (фон экрана) ───────────────────────────────────────────────
+local ParticleContainer = Instance.new("Frame")
+ParticleContainer.Name = "Particles"
+ParticleContainer.Size = UDim2.fromScale(1, 1)
+ParticleContainer.BackgroundTransparency = 1
+ParticleContainer.ZIndex = 1
+ParticleContainer.ClipsDescendants = true
+ParticleContainer.Parent = Gui
+
+local ActiveParticles = {}
+
+local PARTICLE_CONFIGS = {
+    snow   = { count = 40, speed = 35,  size = {3, 6},   drift = 18,  text = "•",  color = Color3.fromRGB(200, 220, 255), alpha = 0.55 },
+    rain   = { count = 55, speed = 280, size = {2, 3},   drift = 40,  text = "|",  color = Color3.fromRGB(150, 190, 255), alpha = 0.35 },
+    stars  = { count = 30, speed = 8,   size = {2, 5},   drift = 4,   text = "★",  color = Color3.fromRGB(255, 240, 180), alpha = 0.45 },
+    sparks = { count = 35, speed = 55,  size = {3, 7},   drift = 60,  text = "✦",  color = ACCENT,                        alpha = 0.5  },
+}
+
+local function ClearParticles()
+    for _, p in ipairs(ActiveParticles) do pcall(function() p:Destroy() end) end
+    ActiveParticles = {}
+end
+
+local ParticleConn = nil
+
+local function SpawnParticles(kind)
+    ClearParticles()
+    if ParticleConn then ParticleConn:Disconnect() ParticleConn = nil end
+    if kind == "none" then return end
+
+    local cfg = PARTICLE_CONFIGS[kind]
+    if not cfg then return end
+
+    local cam = workspace.CurrentCamera
+    local vw  = cam and cam.ViewportSize.X or 400
+    local vh  = cam and cam.ViewportSize.Y or 700
+
+    local function MakeParticle()
+        local sz = math.random(cfg.size[1] * 10, cfg.size[2] * 10) / 10
+        local lbl = Instance.new("TextLabel")
+        lbl.BackgroundTransparency = 1
+        lbl.Text = cfg.text
+        lbl.Font = Enum.Font.GothamBold
+        lbl.TextSize = sz * 3
+        lbl.TextColor3 = (kind == "sparks") and ACCENT or cfg.color
+        lbl.TextTransparency = cfg.alpha
+        lbl.Size = UDim2.fromOffset(sz * 4, sz * 4)
+        lbl.Position = UDim2.fromOffset(math.random(0, vw), math.random(-40, -4))
+        lbl.ZIndex = 2
+        lbl.Parent = ParticleContainer
+        table.insert(ActiveParticles, lbl)
+        return lbl
+    end
+
+    -- инициализируем с разброса по высоте чтобы не все стартовали сверху
+    for i = 1, cfg.count do
+        local p = MakeParticle()
+        p.Position = UDim2.fromOffset(math.random(0, vw), math.random(0, vh))
+    end
+
+    -- анимационный цикл через Heartbeat
+    local lastT = os.clock()
+    ParticleConn = RunService.Heartbeat:Connect(function()
+        local now = os.clock()
+        local dt  = now - lastT
+        lastT = now
+
+        for i = #ActiveParticles, 1, -1 do
+            local p = ActiveParticles[i]
+            if not p.Parent then
+                table.remove(ActiveParticles, i)
+                continue
+            end
+            local py = p.Position.Y.Offset + cfg.speed * dt
+            local px = p.Position.X.Offset + math.sin(now * 0.8 + i) * cfg.drift * dt
+            if py > vh + 10 then
+                -- перемещаем наверх
+                p.Position = UDim2.fromOffset(math.random(0, vw), -10)
+                if kind == "sparks" then p.TextColor3 = ACCENT end
+            else
+                p.Position = UDim2.fromOffset(px, py)
+            end
+        end
+    end)
+end
+
+-- запускаем с дефолтными частицами после загрузки
+task.delay(2.2, function()
+    if VFX.Particle ~= "none" then SpawnParticles(VFX.Particle) end
+end)
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
@@ -495,30 +724,40 @@ local function Toggle(text, initial, callback)
 
     local value = initial == true
 
-    local function Refresh()
+    local function Refresh(animate)
         if value then
-            switch.BackgroundColor3 = ACCENT
-            knob.BackgroundColor3 = Color3.new(1, 1, 1)
-            knob.Position = UDim2.new(1, -23, 0.5, 0)
+            if animate and VFX.Animations then
+                Tween(switch, { BackgroundColor3 = ACCENT }, 0.15)
+                Tween(knob,   { Position = UDim2.new(1, -23, 0.5, 0), BackgroundColor3 = Color3.new(1,1,1) }, 0.18, Enum.EasingStyle.Back)
+            else
+                switch.BackgroundColor3 = ACCENT
+                knob.BackgroundColor3 = Color3.new(1, 1, 1)
+                knob.Position = UDim2.new(1, -23, 0.5, 0)
+            end
         else
-            switch.BackgroundColor3 = Color3.fromRGB(30, 42, 58)
-            knob.BackgroundColor3 = C.TextDim
-            knob.Position = UDim2.new(0, 3, 0.5, 0)
+            if animate and VFX.Animations then
+                Tween(switch, { BackgroundColor3 = Color3.fromRGB(30, 42, 58) }, 0.15)
+                Tween(knob,   { Position = UDim2.new(0, 3, 0.5, 0), BackgroundColor3 = C.TextDim }, 0.18, Enum.EasingStyle.Back)
+            else
+                switch.BackgroundColor3 = Color3.fromRGB(30, 42, 58)
+                knob.BackgroundColor3 = C.TextDim
+                knob.Position = UDim2.new(0, 3, 0.5, 0)
+            end
         end
     end
 
     button.Activated:Connect(function()
         value = not value
-        Refresh()
+        Refresh(true)
         callback(value)
     end)
 
-    Refresh()
+    Refresh(false)
 
     return {
         Set = function(v)
             value = v == true
-            Refresh()
+            Refresh(true)
             callback(value)
         end,
         Get = function() return value end,
@@ -1995,9 +2234,91 @@ local function BuildInventory()
     Info("Читает реплицированные таблицы предметов и настроек. Только чтение.", 40)
 end
 
+local function BuildVisual()
+    Section("ACCENT COLOR")
+    for _, preset in ipairs(ACCENT_PRESETS) do
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(1, 0, 0, 42)
+        frame.BackgroundColor3 = C.Row
+        frame.BorderSizePixel = 0
+        frame.Parent = Content
+        Corner(frame, 8)
+
+        local swatch = Instance.new("Frame")
+        swatch.Size = UDim2.fromOffset(22, 22)
+        swatch.Position = UDim2.new(0, 12, 0.5, -11)
+        swatch.BackgroundColor3 = preset.Color
+        swatch.BorderSizePixel = 0
+        swatch.Parent = frame
+        Corner(swatch, 5)
+
+        local lbl = NewLabel(frame, preset.Name, 13, Enum.Font.GothamMedium)
+        lbl.Position = UDim2.fromOffset(44, 0)
+        lbl.Size = UDim2.new(1, -100, 1, 0)
+        lbl.TextColor3 = C.Text
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+
+        local activeLabel = NewLabel(frame, ACCENT == preset.Color and "● Active" or "", 11, Enum.Font.Gotham)
+        activeLabel.AnchorPoint = Vector2.new(1, 0.5)
+        activeLabel.Position = UDim2.new(1, -12, 0.5, 0)
+        activeLabel.Size = UDim2.fromOffset(60, 20)
+        activeLabel.TextColor3 = preset.Color
+        activeLabel.TextXAlignment = Enum.TextXAlignment.Right
+
+        local hit = Instance.new("TextButton", frame)
+        hit.Size = UDim2.fromScale(1, 1)
+        hit.BackgroundTransparency = 1
+        hit.Text = ""
+        hit.Activated:Connect(function()
+            SetAccent(preset.Color)
+            -- обновляем метки в текущей вкладке
+            if CurrentTab then OpenTab(CurrentTab) end
+        end)
+    end
+
+    Section("PARTICLES")
+    local PARTICLE_OPTIONS = { "none", "snow", "rain", "stars", "sparks" }
+    for _, kind in ipairs(PARTICLE_OPTIONS) do
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(1, 0, 0, 42)
+        frame.BackgroundColor3 = C.Row
+        frame.BorderSizePixel = 0
+        frame.Parent = Content
+        Corner(frame, 8)
+
+        local lbl = NewLabel(frame, kind:upper(), 13, Enum.Font.GothamMedium)
+        lbl.Position = UDim2.fromOffset(14, 0)
+        lbl.Size = UDim2.new(1, -80, 1, 0)
+        lbl.TextColor3 = C.Text
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+
+        local activeLbl = NewLabel(frame, VFX.Particle == kind and "● On" or "", 11, Enum.Font.Gotham)
+        activeLbl.AnchorPoint = Vector2.new(1, 0.5)
+        activeLbl.Position = UDim2.new(1, -12, 0.5, 0)
+        activeLbl.Size = UDim2.fromOffset(40, 20)
+        activeLbl.TextColor3 = ACCENT
+        activeLbl.TextXAlignment = Enum.TextXAlignment.Right
+
+        local hit = Instance.new("TextButton", frame)
+        hit.Size = UDim2.fromScale(1, 1)
+        hit.BackgroundTransparency = 1
+        hit.Text = ""
+        hit.Activated:Connect(function()
+            VFX.Particle = kind
+            SpawnParticles(kind)
+            OpenTab("Visual")
+        end)
+    end
+
+    Section("ANIMATIONS")
+    Toggle("All Animations", VFX.Animations, function(v) VFX.Animations = v end)
+    Toggle("Open/Close Anim",  VFX.OpenAnim,  function(v) VFX.OpenAnim = v end)
+    Toggle("Tab Fade Anim",    VFX.TabAnim,   function(v) VFX.TabAnim = v end)
+end
+
 local function BuildScripts()
     Section("BUILD INFO")
-    Info("NEVERLOSE MOBILE v2 — оболочка Neverlose, движок Project Delta. Dual aim (NPC/PVP), hold + tap-lock, sticky target, tracers, FOV circle.", 72)
+    Info("CSS.JAVA v3 — Project Delta Core. Dual aim (NPC/PVP), hold + tap-lock, sticky target, tracers, FOV circle, animated UI, particles.", 80)
     Info("Состояние функций не привязано к Tool. Респаун не сбрасывает GUI.", 40)
 end
 
@@ -2032,6 +2353,7 @@ Tabs["Main"] = BuildMain
 Tabs["Inventory"] = BuildInventory
 Tabs["Scripts"] = BuildScripts
 Tabs["Configs"] = BuildConfigs
+Tabs["Visual"] = BuildVisual
 
 -- ============================================================
 -- SIDEBAR
@@ -2073,25 +2395,39 @@ end
 
 local function CreateMenuItem(name, iconId)
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, 0, 0, 40)
+    button.Size = UDim2.new(1, 0, 0, 50)   -- чуть выше чтобы влезла подпись
     button.BackgroundColor3 = C.RowAlt
     button.BackgroundTransparency = 1
     button.Text = ""
     button.AutoButtonColor = false
     button.BorderSizePixel = 0
+    button.ZIndex = 3
     button.Parent = MenuScroll
     Corner(button, 8)
 
     local icon = Instance.new("ImageLabel")
-    icon.AnchorPoint = Vector2.new(0.5, 0.5)
-    icon.Position = UDim2.fromScale(0.5, 0.5)
-    icon.Size = UDim2.fromOffset(20, 20)
+    icon.AnchorPoint = Vector2.new(0.5, 0)
+    icon.Position = UDim2.new(0.5, 0, 0, 6)
+    icon.Size = UDim2.fromOffset(18, 18)
     icon.BackgroundTransparency = 1
     icon.Image = iconId or ""
     icon.ImageColor3 = C.TextDim
+    icon.ZIndex = 4
     icon.Parent = button
 
-    MenuButtons[name] = { Button = button, Icon = icon }
+    -- подпись под иконкой
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, 0, 0, 14)
+    lbl.Position = UDim2.new(0, 0, 0, 26)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = name:sub(1, 6):upper()   -- первые 6 символов чтобы влезло
+    lbl.Font = Enum.Font.Gotham
+    lbl.TextSize = 7
+    lbl.TextColor3 = C.TextDim
+    lbl.ZIndex = 4
+    lbl.Parent = button
+
+    MenuButtons[name] = { Button = button, Icon = icon, Label = lbl }
 
     button.Activated:Connect(function()
         OpenTab(name)
@@ -2105,17 +2441,40 @@ OpenTab = function(name)
     if not builder then return end
 
     CurrentTab = name
-    HeaderTitle.Text = string.upper(name)
-    ClearContent()
-    builder()
+
+    local function doSwitch()
+        HeaderTitle.Text = string.upper(name)
+        ClearContent()
+        builder()
+        -- fade-in: анимируем через ScrollBarImageTransparency (безопасное свойство)
+        -- и сдвигаем Position чуть снизу для ощущения slide-in
+        if VFX.TabAnim and VFX.Animations then
+            Content.Position = UDim2.fromOffset(10, 43)
+            TweenService:Create(Content, TweenInfo.new(0.18, Enum.EasingStyle.Quart), {
+                Position = UDim2.fromOffset(0, 43)
+            }):Play()
+        end
+    end
+
+    if VFX.TabAnim and VFX.Animations then
+        -- slide-out
+        TweenService:Create(Content, TweenInfo.new(0.09, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+            Position = UDim2.fromOffset(-8, 43)
+        }):Play()
+        task.delay(0.10, doSwitch)
+    else
+        doSwitch()
+    end
 
     for tabName, refs in pairs(MenuButtons) do
         if tabName == name then
             refs.Button.BackgroundTransparency = 0
             refs.Icon.ImageColor3 = ACCENT
+            if refs.Label then refs.Label.TextColor3 = ACCENT end
         else
             refs.Button.BackgroundTransparency = 1
             refs.Icon.ImageColor3 = C.TextDim
+            if refs.Label then refs.Label.TextColor3 = C.TextDim end
         end
     end
 end
@@ -2136,6 +2495,7 @@ CreateMenuItem("Main", ICON_IDS.Main)
 CreateMenuItem("Inventory", ICON_IDS.Inventory)
 CreateMenuItem("Scripts", ICON_IDS.Scripts)
 CreateMenuItem("Configs", ICON_IDS.Configs)
+CreateMenuItem("Visual", "rbxassetid://4403645016")
 
 -- ============================================================
 -- ON-SCREEN CONTROLS
@@ -2190,6 +2550,44 @@ AimNPCButton.Parent = Gui
 Corner(AimNPCButton, 29)
 Stroke(AimNPCButton, C.NPCAim, 1.5)
 
+-- ── Autofire через ServerProjectile ─────────────────────────────────────────
+-- Remote найден в ReplicatedStorage.Remotes.ServerProjectile (см. Remote Dumper)
+local ServerProjectile = game:GetService("ReplicatedStorage")
+    :WaitForChild("Remotes", 5)
+    and game:GetService("ReplicatedStorage").Remotes:FindFirstChild("ServerProjectile")
+
+local autoFireActive = false  -- глобальный флаг: хотя бы одна кнопка зажата
+
+-- порог в пикселях: насколько близко кость должна быть к центру экрана
+-- чтобы считать "наведено" и выстрелить
+local AIM_FIRE_THRESHOLD = 18
+
+local function IsAimed(target)
+    local cam = Camera()
+    if not cam or not target or not target.Parent then return false end
+    local screen, onScreen = cam:WorldToViewportPoint(target.Position)
+    if not onScreen or screen.Z <= 0 then return false end
+    local vs = cam.ViewportSize
+    local center = Vector2.new(vs.X / 2, vs.Y / 2)
+    return (Vector2.new(screen.X, screen.Y) - center).Magnitude <= AIM_FIRE_THRESHOLD
+end
+
+local function AutoFireLoop()
+    while autoFireActive do
+        local target = AIM.Target
+        -- стреляем только если камера уже навелась (кость в AIM_FIRE_THRESHOLD пикселей от центра)
+        if target and target.Parent and ServerProjectile and IsAimed(target) then
+            local cam = Camera()
+            if cam then
+                pcall(function()
+                    ServerProjectile:FireServer(target.Position, cam.CFrame.LookVector)
+                end)
+            end
+        end
+        task.wait(0.08)
+    end
+end
+
 local function BindAimButton(button, kind)
     local pressTime = 0
 
@@ -2198,6 +2596,11 @@ local function BindAimButton(button, kind)
             or input.UserInputType == Enum.UserInputType.MouseButton1 then
             pressTime = os.clock()
             AIM.HoldMode = kind
+            -- запускаем автострельбу при удержании
+            if not autoFireActive then
+                autoFireActive = true
+                task.spawn(AutoFireLoop)
+            end
         end
     end)
 
@@ -2205,12 +2608,26 @@ local function BindAimButton(button, kind)
         if input.UserInputType == Enum.UserInputType.Touch
             or input.UserInputType == Enum.UserInputType.MouseButton1 then
             if AIM.HoldMode == kind then
-                -- быстрый тап = фиксация цели на 1.5 сек
+                -- быстрый тап < 0.25с = фиксация цели на 1.5 сек + одиночный выстрел
                 if os.clock() - pressTime < 0.25 then
                     AIM.LockKind = kind
                     AIM.LockUntil = os.clock() + 1.5
+                    -- одиночный выстрел по зафиксированной цели
+                    task.spawn(function()
+                        task.wait(0.05)
+                        local target = AIM.Target
+                        if target and target.Parent and ServerProjectile then
+                            local cam = Camera()
+                            if cam then
+                                pcall(function()
+                                    ServerProjectile:FireServer(target.Position, cam.CFrame.LookVector)
+                                end)
+                            end
+                        end
+                    end)
                 end
                 AIM.HoldMode = "none"
+                autoFireActive = false  -- останавливаем автострельбу при отпускании
             end
         end
     end)
@@ -2287,7 +2704,34 @@ local Opened = true
 
 local function SetOpen(value)
     Opened = value
-    MainFrame.Visible = Opened
+    if value then
+        MainFrame.Visible = true
+        if VFX.OpenAnim and VFX.Animations then
+            MainFrame.Size = UDim2.fromOffset(
+                MainFrame.Size.X.Offset * 0.85,
+                MainFrame.Size.Y.Offset * 0.85
+            )
+            MainFrame.BackgroundTransparency = 1
+            TweenService:Create(MainFrame, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                Size = UDim2.fromOffset(
+                    math.clamp((workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 780) - 14, 330, 860),
+                    math.clamp((workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 350) - 22, 300, 720)
+                ),
+                BackgroundTransparency = 0,
+            }):Play()
+        end
+    else
+        if VFX.OpenAnim and VFX.Animations then
+            TweenService:Create(MainFrame, TweenInfo.new(0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+                BackgroundTransparency = 1,
+            }):Play()
+            task.delay(0.19, function()
+                if not Opened then MainFrame.Visible = false end
+            end)
+        else
+            MainFrame.Visible = false
+        end
+    end
 end
 
 OpenButton.Activated:Connect(function()
